@@ -11,14 +11,11 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:migrate:deploy": "prisma migrate deploy",
     "prisma:studio": "prisma studio",
-    "prisma:seed": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' prisma/seeders/index.ts",
+    "prisma:seed": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"CommonJS\"}' ts-node prisma/seeders/index.ts",
     "lint": "eslint 'src/**/*.{js,ts}' --fix",
     "format": "prettier --write 'src/**/*.{js,ts,json}'"
   },
   "postinstall": "prisma generate",
-  "prisma": {
-    "seed": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' prisma/seeders/index.ts"
-  },
   "keywords": [],
   "author": "",
   "license": "ISC",
