@@ -1,0 +1,124 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                  String               @id @default(cuid())
+  name                String?
+  email               String               @unique
+  password            String?
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  roleId              Int
+  avatar              String?
+  emailVerified       DateTime?
+  auditLogs           AuditLog[]
+  comments            Comment[]
+  passwordResetTokens PasswordResetToken[]
+  ledProjects         Project[]            @relation("LeaderProjects")
+  projects            ProjectMember[]
+  role                Role                 @relation(fields: [roleId], references: [id], onDelete: Cascade)
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  email     String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [email], references: [email])
+}
+
+model Role {
+  id    Int    @id @default(autoincrement())
+  name  String @unique
+  users User[]
+}
+
+model Project {
+  id           Int             @id @default(autoincrement())
+  title        String
+  description  String?
+  leaderId     String
+  requirements String?
+  progress     String?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  image        String?
+  website      String?
+  slug         String?         @unique
+  logo         String?
+  auditLogs    AuditLog[]
+  comments     Comment[]
+  leader       User            @relation("LeaderProjects", fields: [leaderId], references: [id])
+  members      ProjectMember[]
+  subscribers  Subscription[]
+}
+
+model ProjectMember {
+  id        Int     @id @default(autoincrement())
+  userId    String
+  projectId Int
+  project   Project @relation(fields: [projectId], references: [id])
+  user      User    @relation(fields: [userId], references: [id])
+}
+
+model Subscription {
+  id           Int              @id @default(autoincrement())
+  email        String
+  projectId    Int?
+  type         SubscriptionType
+  subscribedAt DateTime         @default(now())
+  project      Project?         @relation(fields: [projectId], references: [id])
+}
+
+model Comment {
+  id        Int       @id @default(autoincrement())
+  content   String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  authorId  String
+  projectId Int
+  parentId  Int?
+  fileUrls  String[]
+  author    User      @relation(fields: [authorId], references: [id])
+  parent    Comment?  @relation("CommentReplies", fields: [parentId], references: [id])
+  replies   Comment[] @relation("CommentReplies")
+  project   Project   @relation(fields: [projectId], references: [id])
+
+  @@index([projectId])
+  @@index([parentId])
+}
+
+model ContactForm {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String
+  phone     String
+  country   String
+  createdAt DateTime @default(now())
+}
+
+model AuditLog {
+  id        Int      @id @default(autoincrement())
+  entity    String
+  action    String
+  userId    String
+  entityId  Int
+  projectId Int
+  timestamp DateTime @default(now())
+  details   String?
+  project   Project  @relation(fields: [projectId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+enum SubscriptionType {
+  PROJECT
+  GENERAL
+}
