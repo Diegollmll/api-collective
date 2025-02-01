@@ -1,16 +1,16 @@
 import { SESClient, SendEmailCommand } from "@aws-sdk/client-ses";
 
 // Validar que las variables de entorno estén definidas
-if (!process.env.AWS_DEFAULT_REGION || !process.env.AWS_ACCESS_KEY_ID || !process.env.AWS_SECRET_ACCESS_KEY) {
+if (!process.env.REGION || !process.env.ACCESS_KEY_ID || !process.env.SECRET_ACCESS_KEY) {
   throw new Error("AWS credentials or region are not defined in .env");
 }
 
 // Configuración de Amazon SES
 const sesClient = new SESClient({
-  region: process.env.AWS_DEFAULT_REGION, // Región configurada en tu .env
+  region: process.env.REGION, // Región configurada en tu .env
   credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID as string, // Credenciales de acceso
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY as string,
+    accessKeyId: process.env.ACCESS_KEY_ID as string, // Credenciales de acceso
+    secretAccessKey: process.env.SECRET_ACCESS_KEY as string,
   },
 });
 
@@ -33,7 +33,7 @@ export const sendResetPasswordEmail = async (email: string, resetToken: string):
           Data: `
             <p>Hi,</p>
             <p>You have requested to reset your password. Please click on the link below to reset it:</p>
-            <a href="${process.env.NEXTAUTH_URL}/auth/resetpassword/${resetToken}">
+            <a href="https://collectiveactiongroup.com/auth/resetpassword/${resetToken}">
               Reset Password
             </a>
             <p>If you did not request this, please ignore this email.</p>
