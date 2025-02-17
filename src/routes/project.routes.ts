@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { upload } from '../config/multer.config';
 import {
     createProject,
     getProjects,
@@ -11,10 +12,19 @@ import {
 const router = Router();
 
 router.get("/", getProjects);
-router.post("/", createProject);
+router.post("/", upload.fields([
+    { name: 'image', maxCount: 1 },
+    { name: 'logo', maxCount: 1 }
+]), createProject);
 router.get("/:id", getProjectById);
-router.put("/:id", updateProject);
-router.patch("/:id", updateProject);
+router.put("/:id", upload.fields([
+    { name: 'image', maxCount: 1 },
+    { name: 'logo', maxCount: 1 }
+]), updateProject);
+router.patch("/:id", upload.fields([
+    { name: 'image', maxCount: 1 },
+    { name: 'logo', maxCount: 1 }
+]), updateProject);
 router.delete("/:id", deleteProject);
 router.get("/members/", getMembers);
 

@@ -1,5 +1,5 @@
 import express from 'express';
-import cors from './config/cors';
+import cors from 'cors';
 import dotenv from 'dotenv';
 import userRoutes from './routes/user.routes';
 import projectRoutes from './routes/project.routes';
@@ -8,14 +8,20 @@ import roleRoutes from './routes/role.routes';
 import contactRoutes from './routes/contact.routes';
 import commentRoutes from './routes/comment.routes';
 import authRoutes from './routes/auth.routes';
+import { requestLogger } from './middlewares/logger.middleware';
+import { handleMulterError } from './config/multer.config';
 // Cargar variables de entorno
 dotenv.config();
 
 const app = express();
 
 // Middlewares
-app.use(cors);
+app.use(cors({
+    origin: 'http://localhost:3000',
+    credentials: true
+}));
 app.use(express.json());
+app.use(requestLogger);
 
 // Rutas
 app.get('/', (_req, res) => {
@@ -32,4 +38,7 @@ app.use('/api/auth', authRoutes);
 app.get("/health", (_req, res) => {
     res.status(200).json({ message: "Server is healthy!" });
 });
+
+app.use(handleMulterError);
+
 export default app;

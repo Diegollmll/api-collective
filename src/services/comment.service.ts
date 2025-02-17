@@ -1,5 +1,7 @@
 import { commentSchema, commentUpdateSchema } from "../schemas/comment.schema";
 import prisma from "../utils/prisma";
+import { Comment } from "@prisma/client";
+import { ZodError } from "zod";
 
 type ApiResponse<T> = {
     success: boolean;
@@ -10,32 +12,62 @@ type ApiResponse<T> = {
 
 export const CommentService = {
     // Crear un comentario
-    async createComment(data: typeof commentSchema._input): Promise<ApiResponse<typeof commentSchema._output>> {
+    async createComment(data: typeof commentSchema._input): Promise<ApiResponse<Comment>> {
         try {
-            console.log(data);
-            const parsedData = commentSchema.parse(data);
-            const comment = await prisma.comment.create({
-                data: parsedData,
+            console.log('Creando comentario:', {
+                ...data,
+                isReply: !!data.parentId,
+                hasFiles: data.fileUrls && data.fileUrls.length > 0
             });
-            return { success: true, data: comment, message: "Comment created successfully." };
-        } catch (error: unknown) {
-            const err = error as Error & { errors?: { message: string }[] };
-            if (err.name === "ZodError") {
+
+            const parsedData = commentSchema.parse(data);
+
+            const comment = await prisma.comment.create({
+                data: {
+                    content: parsedData.content,
+                    userId: parsedData.userId,
+                    projectId: parsedData.projectId,
+                    parentId: parsedData.parentId,
+                    fileUrls: parsedData.fileUrls || []
+                },
+                include: {
+                    user: {
+                        select: {
+                            id: true,
+                            name: true,
+                            avatar: true
+                        }
+                    },
+                    parent: true // Incluir información del comentario padre si existe
+                }
+            });
+
+            return {
+                success: true,
+                data: comment,
+                message: `Comentario ${parsedData.parentId ? 'respuesta' : 'principal'} creado exitosamente`
+            };
+        } catch (error) {
+            console.error('Error en createComment:', error);
+            if (error instanceof ZodError) {
                 return {
                     success: false,
-                    error: "Invalid data: " + (err.errors ? err.errors.map((e) => e.message).join(", ") : "Unknown error"),
+                    error: "Datos inválidos: " + error.errors.map(err => err.message).join(", ")
                 };
             }
-            return { success: false, error: "Error creating comment: " + err.message };
+            return {
+                success: false,
+                error: "Error al crear el comentario"
+            };
         }
     },
 
     // Obtener todos los comentarios
-    async getComments(): Promise<ApiResponse<typeof commentSchema._output[]>> {
+    async getComments(): Promise<ApiResponse<Comment[]>> {
         try {
             const comments = await prisma.comment.findMany({
                 include: {
-                    author: {
+                    user: {
                         select: {
                             id: true,
                             name: true,
@@ -54,7 +86,7 @@ export const CommentService = {
     },
 
     // Obtener un comentario por ID
-    async getCommentById(id: number): Promise<ApiResponse<typeof commentSchema._output>> {
+    async getCommentById(id: number): Promise<ApiResponse<Comment>> {
         try {
             const comment = await prisma.comment.findUnique({
                 where: { id },
@@ -111,4 +143,33 @@ export const CommentService = {
             }
         }
     },
+
+    getCommentsByProject: async (projectId: number): Promise<ApiResponse<Comment[]>> => {
+        try {
+            const comments = await prisma.comment.findMany({
+                where: { projectId },
+                include: {
+                    user: {
+                        select: {
+                            id: true,
+                            name: true,
+                            avatar: true
+                        }
+                    }
+                },
+                orderBy: { createdAt: 'desc' }
+            });
+
+            return {
+                success: true,
+                data: comments
+            };
+        } catch (error) {
+            console.error('Error obteniendo comentarios:', error);
+            return {
+                success: false,
+                error: "Error al obtener los comentarios"
+            };
+        }
+    }
 };

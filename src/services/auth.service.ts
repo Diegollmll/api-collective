@@ -2,9 +2,11 @@ import { userSchema } from "../schemas/auth.schema";
 import { ZodError, ZodIssue } from "zod";
 import prisma from "../utils/prisma";
 import bcrypt from "bcrypt";
-import { generateToken } from "../config/passportConfig";
-import { v4 as uuidv4 } from "uuid"; // Importa uuidv4
-import { sendResetPasswordEmail } from "../utils/email"; // Importa la función de envío de correos
+import { v4 as uuidv4 } from "uuid";
+import { sendResetPasswordEmail } from "../utils/email";
+import { Response } from 'express';
+import jwt from "jsonwebtoken";
+import { User } from "@prisma/client";
 
 type ApiResponse<T> = {
   success: boolean;
@@ -13,18 +15,41 @@ type ApiResponse<T> = {
   message?: string;
 };
 
+interface UserWithRole extends User {
+    role: {
+        id: number;
+        name: string;
+    };
+}
+
+const generateToken = (user: UserWithRole): string => {
+    return jwt.sign(
+        { 
+            id: user.id, 
+            email: user.email, 
+            role: user.role.name 
+        },
+        process.env.JWT_SECRET || 'your-secret-key',
+        { 
+            expiresIn: '24h'
+        }
+    );
+};
+
 export const AuthService = {
   // Registro de usuario
   async registerUser(data: typeof userSchema._input): Promise<ApiResponse<{ [key: string]: unknown }>> {
     try {
+      console.log('Validando datos:', data);
       const validatedData = userSchema.parse(data);
+      console.log('Datos validados:', validatedData);
 
       const existingUser = await prisma.user.findUnique({
         where: { email: validatedData.email },
       });
 
       if (existingUser) {
-        return { success: false, error: "The email address is already registered." };
+        return { success: false, error: "El correo electrónico ya está registrado." };
       }
 
       const roleExists = await prisma.role.findUnique({
@@ -32,7 +57,7 @@ export const AuthService = {
       });
 
       if (!roleExists) {
-        return { success: false, error: "The provided role ID is not valid." };
+        return { success: false, error: "El rol proporcionado no es válido." };
       }
 
       const hashedPassword = await bcrypt.hash(validatedData.password, 10);
@@ -42,59 +67,77 @@ export const AuthService = {
           name: validatedData.name,
           email: validatedData.email,
           password: hashedPassword,
-          role: {
-            connect: { id: validatedData.roleId },
-          },
+          roleId: validatedData.roleId
         },
+        include: {
+          role: true
+        }
       });
 
-      const { ...user } = userCreated; // Excluye la contraseña del objeto de respuesta
-      
-      return { success: true, data: user, message: "User created successfully." };
-    } catch (error: unknown) {
+      const { password: _, ...userWithoutPassword } = userCreated;
+
+      return { 
+        success: true, 
+        data: userWithoutPassword, 
+        message: "Usuario creado exitosamente." 
+      };
+    } catch (error) {
+      console.error('Error detallado:', error);
       if (error instanceof ZodError) {
         return {
           success: false,
-          error: "Validation error: " + error.errors.map((err: ZodIssue) => err.message).join(", "),
+          error: "Error de validación: " + error.errors.map(err => err.message).join(", ")
         };
       }
       if (error instanceof Error) {
-        return { success: false, error: "Error creating user: " + error.message };
+        return { success: false, error: "Error al crear usuario: " + error.message };
       }
-      return { success: false, error: "Unknown error occurred." };
+      return { success: false, error: "Error desconocido." };
     }
   },
 
   // Inicio de sesión
-  async loginUser(email: string, password: string): Promise<ApiResponse<{ token: string; user: { [key: string]: unknown } }>> {
+  async loginUser(email: string, password: string, res: Response): Promise<ApiResponse<{ user: Omit<UserWithRole, 'password'> }>> {
     try {
       const user = await prisma.user.findUnique({
         where: { email },
-        include: { role: true },
+        include: { role: true }
       });
 
       if (!user) {
-        return { success: false, error: "User not found" };
+        return { success: false, error: "Usuario no encontrado" };
       }
 
       if (!user.password) {
-        return { success: false, error: "Password not set" };
+        return { success: false, error: "Contraseña de usuario inválida" };
       }
 
       const isPasswordValid = await bcrypt.compare(password, user.password);
-
       if (!isPasswordValid) {
-        return { success: false, error: "Incorrect password" };
+        return { success: false, error: "Contraseña incorrecta" };
       }
 
-      const token = generateToken(user);
+      const token = generateToken(user as UserWithRole);
 
-      return { success: true, data: { token, user }, message: "Login successful." };
-    } catch (error: unknown) {
-      if (error instanceof Error) {
-        return { success: false, error: "Error logging in: " + error.message };
-      }
-      return { success: false, error: "Unknown error occurred." };
+      res.cookie("token", token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "strict",
+        maxAge: 24 * 60 * 60 * 1000,
+      });
+
+      const { password: _password, ...userWithoutPassword } = user;
+      
+      return { 
+        success: true, 
+        data: { user: userWithoutPassword as Omit<UserWithRole, 'password'> }, 
+        message: "Login exitoso" 
+      };
+    } catch (error) {
+      return { 
+        success: false, 
+        error: "Error al iniciar sesión: " + (error instanceof Error ? error.message : "Error desconocido") 
+      };
     }
   },
 

@@ -8,6 +8,7 @@ export const createSubscription = async (
   next: NextFunction
 ): Promise<void> => {
   try {
+    console.log("req.body", req.body);
     const result = await SubscriptionService.createSubscription(req.body);
     if (!result.success) {
       res.status(400).json(result);
@@ -62,6 +63,7 @@ export const updateSubscription = async (
   next: NextFunction
 ): Promise<void> => {
   try {
+    console.log(req.body);
     const id = parseInt(req.params.id, 10);
     const result = await SubscriptionService.updateSubscription(id, req.body);
     if (!result.success) {

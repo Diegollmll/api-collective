@@ -7,13 +7,27 @@ export const registerUser = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const result = await AuthService.registerUser(req.body);
+    console.log('Datos de registro recibidos:', req.body);
+    
+    // Validar que roleId sea un número
+    const userData = {
+      ...req.body,
+      roleId: Number(req.body.roleId)
+    };
+    
+    console.log('Datos procesados:', userData);
+    
+    const result = await AuthService.registerUser(userData);
+    
+    console.log('Resultado del registro:', result);
+    
     if (!result.success) {
       res.status(400).json(result);
       return;
     }
     res.status(201).json(result);
   } catch (error) {
+    console.error('Error en registro:', error);
     next(error);
   }
 };
@@ -25,7 +39,7 @@ export const loginUser = async (
 ): Promise<void> => {
   try {
     const { email, password } = req.body;
-    const result = await AuthService.loginUser(email, password);
+    const result = await AuthService.loginUser(email, password, res);
     if (!result.success) {
       res.status(400).json(result);
       return;
@@ -35,6 +49,21 @@ export const loginUser = async (
     next(error);
   }
 };
+
+export const logoutUser = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    res.clearCookie("token", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+    });
+
+    res.status(200).json({ success: true, message: "Logged out successfully." });
+  } catch (error) {
+    next(error);
+  }
+};
+
 
 export const requestPasswordReset = async (
     req: Request,

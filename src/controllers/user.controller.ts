@@ -9,44 +9,61 @@ import {
 } from "../services/user.service";
 
 // Crear usuario
-export const createUser = async (req: Request, res: Response, next: NextFunction) => {
+export const createUser = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-        const user = await createUserService(req.body);
-        res.status(201).json({ success: true, data: user });
+        // Combinar el body con el archivo
+        const userData = {
+            ...req.body,
+            file: req.file  // Multer pone el archivo en req.file
+        };
+        
+        console.log('Datos recibidos:', {
+            body: req.body,
+            file: req.file
+        });
+
+        const result = await createUserService(userData);
+        if (!result.success) {
+            res.status(400).json(result);
+            return;
+        }
+        res.status(201).json(result);
     } catch (error) {
         next(error);
     }
 };
 
 // Obtener todos los usuarios
-export const getUsers = async (_req: Request, res: Response, next: NextFunction) => {
+export const getUsers = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-        const users = await getUsersService();
-        res.status(200).json({ success: true, data: users });
+        const result = await getUsersService();
+        if (!result.success) {
+            res.status(400).json(result);
+            return;
+        }
+        res.status(200).json(result);
     } catch (error) {
         next(error);
     }
 };
 
 // Obtener usuario por ID
-export const getUserById = async (req: Request, res: Response, next: NextFunction) => {
+export const getUserById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const { id } = req.params;
-        const user = await getUserByIdService(id);
-
-        if (!user) {
-            res.status(404).json({ success: false, error: "Usuario no encontrado" });
+        const result = await getUserByIdService(id);
+        if (!result.success) {
+            res.status(404).json(result);
             return;
         }
-
-        res.status(200).json({ success: true, data: user });
+        res.status(200).json(result);
     } catch (error) {
         next(error);
     }
 };
 
 // Obtener usuarios por rol
-export const getUsersByRole = async (req: Request, res: Response, next: NextFunction) => {
+export const getUsersByRole = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const roleId = parseInt(req.params.roleId);
         const users = await getUsersByRoleService(roleId);
@@ -57,18 +74,33 @@ export const getUsersByRole = async (req: Request, res: Response, next: NextFunc
 };
 
 // Actualizar usuario
-export const updateUser = async (req: Request, res: Response, next: NextFunction) => {
+export const updateUser = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const { id } = req.params;
-        const user = await updateUserService(id, req.body);
-        res.status(200).json({ success: true, data: user });
+        const userData = {
+            ...req.body,
+            file: req.file
+        };
+        
+        console.log('Datos de actualización:', {
+            id,
+            body: req.body,
+            file: req.file
+        });
+
+        const result = await updateUserService(id, userData);
+        if (!result.success) {
+            res.status(400).json(result);
+            return;
+        }
+        res.status(200).json(result);
     } catch (error) {
         next(error);
     }
 };
 
 // Eliminar usuario
-export const deleteUser = async (req: Request, res: Response, next: NextFunction) => {
+export const deleteUser = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const { id } = req.params;
         await deleteUserService(id);

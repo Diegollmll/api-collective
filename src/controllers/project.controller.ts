@@ -4,7 +4,14 @@ import { ProjectService } from "../services/project.service";
 // Crear proyecto
 export const createProject = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-        const project = await ProjectService.createProject(req.body);
+        const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+        const projectData = {
+            ...req.body,
+            image: files?.image?.[0] || null,
+            logo: files?.logo?.[0] || null,
+        };
+        
+        const project = await ProjectService.createProject(projectData);
         res.status(201).json({ success: true, data: project });
     } catch (error) {
         next(error);
@@ -36,7 +43,14 @@ export const getProjectById = async (req: Request, res: Response, next: NextFunc
 export const updateProject = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const id = parseInt(req.params.id, 10);
-        const project = await ProjectService.updateProject(id, req.body);
+        const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+        const projectData = {
+            ...req.body,
+            image: files?.image?.[0] || null,
+            logo: files?.logo?.[0] || null,
+        };
+        
+        const project = await ProjectService.updateProject(id, projectData);
         res.status(200).json({ success: true, data: project });
     } catch (error) {
         next(error);

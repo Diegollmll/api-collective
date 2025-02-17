@@ -1,5 +1,7 @@
 import { contactSchema, contactUpdateSchema } from "../schemas/contact.schema";
 import prisma from "../utils/prisma";
+import { ContactForm } from "@prisma/client";
+import { ZodError } from "zod";
 
 type ApiResponse<T> = {
     success: boolean;
@@ -10,22 +12,36 @@ type ApiResponse<T> = {
 
 export const ContactService = {
     // Crear un contacto
-    async createContact(data: typeof contactSchema._input): Promise<ApiResponse<typeof contactSchema._output>> {
+    createContact: async (data: typeof contactSchema._input): Promise<ApiResponse<ContactForm>> => {
         try {
             const parsedData = contactSchema.parse(data);
+
             const contact = await prisma.contactForm.create({
-                data: parsedData,
+                data: {
+                    name: parsedData.name,
+                    email: parsedData.email,
+                    phone: parsedData.phone || "",
+                    country: parsedData.country || ""
+                }
             });
-            return { success: true, data: contact, message: "Contact created successfully." };
-        } catch (error: unknown) {
-            const err = error as Error & { errors?: { message: string }[] };
-            if (err.name === "ZodError") {
+
+            return {
+                success: true,
+                data: contact,
+                message: "Contacto creado exitosamente"
+            };
+        } catch (error) {
+            console.error('Error en createContact:', error);
+            if (error instanceof ZodError) {
                 return {
                     success: false,
-                    error: "Invalid data: " + (err.errors ? err.errors.map((e) => e.message).join(", ") : "Unknown error"),
+                    error: "Datos inválidos: " + error.errors.map(err => err.message).join(", ")
                 };
             }
-            return { success: false, error: "Error creating contact: " + err.message };
+            return {
+                success: false,
+                error: "Error al crear el contacto"
+            };
         }
     },
 
@@ -61,29 +77,28 @@ export const ContactService = {
     ): Promise<ApiResponse<typeof contactUpdateSchema._output>> {
         try {
             const parsedData = contactUpdateSchema.parse(data);
-            const contact = await prisma.contactForm.findUnique({
-                where: { id },
-            });
-            if (!contact) {
-                return { success: false, error: "Contact not found" };
-            }
+            
+            const updateData = {
+                name: parsedData.name,
+                email: parsedData.email,
+                phone: parsedData.phone ?? undefined,
+                country: parsedData.country ?? undefined
+            };
+
             const updatedContact = await prisma.contactForm.update({
                 where: { id },
-                data: parsedData,
+                data: updateData
             });
+
             return { success: true, data: updatedContact, message: "Contact updated successfully." };
-        } catch (error: unknown) {
-            const err = error as Error & { code?: string; errors?: { message: string }[] };
-            if (err.name === "ZodError") {
+        } catch (error) {
+            if (error instanceof ZodError) {
                 return {
                     success: false,
-                    error: "Invalid data: " + (err.errors ? err.errors.map((e) => e.message).join(", ") : "Unknown error"),
+                    error: "Datos inválidos: " + error.errors.map(err => err.message).join(", ")
                 };
-            } else if (err.code === "P2025") {
-                return { success: false, error: "Contact not found for update." };
-            } else {
-                return { success: false, error: "Error updating contact: " + err.message };
             }
+            return { success: false, error: "Error updating contact" };
         }
     },
 

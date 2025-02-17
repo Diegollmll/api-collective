@@ -1,4 +1,5 @@
 import prisma from "../utils/prisma";
+import { SubscriptionType } from "@prisma/client";
 import {
   subscriptionSchema,
   subscriptionUpdateSchema,
@@ -15,16 +16,25 @@ export const SubscriptionService = {
   // Crear una suscripción
   async createSubscription(data: typeof subscriptionSchema._input): Promise<ApiResponse<typeof subscriptionSchema._output>> {
     try {
-      const parsedData = subscriptionSchema.parse({
-        ...data,
-        projectId: data.projectId !== null ? Number(data.projectId) : undefined,
+      // Validamos con Zod y vemos si da error
+      const parsedData = subscriptionSchema.safeParse({
+        email: data.email,
+        projectId: data.projectId ? Number(data.projectId) : undefined,
+        type: data.type as SubscriptionType,
       });
 
+      if (!parsedData.success) {
+        console.error("Error en validación Zod:", parsedData.error.format());
+        return { success: false, error: "Datos inválidos" };
+      }
+
       const subscription = await prisma.subscription.create({
-        data: parsedData,
+        data: parsedData.data,
       });
+
       return { success: true, data: { ...subscription, projectId: subscription.projectId ?? undefined } };
     } catch (error: unknown) {
+      console.error("Error en la creación de suscripción:", error);
       return { success: false, error: (error as Error).message };
     }
   },
