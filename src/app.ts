@@ -1,5 +1,4 @@
 import express from 'express';
-import cors from 'cors';
 import dotenv from 'dotenv';
 import userRoutes from './routes/user.routes';
 import projectRoutes from './routes/project.routes';
@@ -10,16 +9,15 @@ import commentRoutes from './routes/comment.routes';
 import authRoutes from './routes/auth.routes';
 import { requestLogger } from './middlewares/logger.middleware';
 import { handleMulterError } from './config/multer.config';
+import corsConfig from './config/cors';
+
 // Cargar variables de entorno
 dotenv.config();
 
 const app = express();
 
 // Middlewares
-app.use(cors({
-    origin: '*',
-    credentials: true
-}));
+app.use(corsConfig);
 app.use(express.json());
 app.use(requestLogger);
 

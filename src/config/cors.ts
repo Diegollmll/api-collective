@@ -1,7 +1,7 @@
 import cors from 'cors';
 
 const corsOptions = {
-  origin: '*',
+  origin: ['http://localhost:3000', 'https://www.collectiveactiongroup.com/', 'https://collectiveactiongroup.com/'],
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
