@@ -1,4 +1,6 @@
 import multer from 'multer';
+import { Request, Response, NextFunction } from 'express';
+import { ErrorRequestHandler } from 'express';
 
 // Lista de tipos MIME permitidos
 const ALLOWED_MIME_TYPES = [
@@ -38,17 +40,23 @@ export const upload = multer({
 });
 
 // Middleware para manejar errores de Multer
-export const handleMulterError = (err: any, req: any, res: any, next: any) => {
+export const handleMulterError: ErrorRequestHandler = (
+    err: Error | multer.MulterError,
+    req: Request,
+    res: Response,
+    next: NextFunction
+) => {
     if (err instanceof multer.MulterError) {
-        return res.status(400).json({
+        res.status(400).json({
             success: false,
             error: `Error al subir archivo: ${err.message}`
         });
     } else if (err) {
-        return res.status(400).json({
+        res.status(400).json({
             success: false,
             error: err.message
         });
+    } else {
+        next();
     }
-    next();
 }; 

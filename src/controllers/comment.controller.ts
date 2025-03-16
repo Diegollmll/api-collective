@@ -176,17 +176,28 @@ export const deleteComment = async (
 
 export const getCommentsByProject = async (req: Request, res: Response): Promise<void> => {
     try {
+        console.log('Recibiendo petición para obtener comentarios del proyecto:', {
+            projectId: req.params.projectId,
+            method: req.method,
+            headers: req.headers,
+            url: req.url
+        });
+        
         const projectId = parseInt(req.params.projectId, 10);
         const result = await CommentService.getCommentsByProject(projectId);
         
         if (!result.success) {
+            console.log('Error al obtener comentarios:', result.error);
             res.status(400).json(result);
             return;
         }
 
+        console.log('Comentarios obtenidos exitosamente:', {
+            count: result.data?.length || 0
+        });
         res.status(200).json(result);
     } catch (error) {
-        console.error('Error:', error);
+        console.error('Error al obtener comentarios:', error);
         res.status(500).json({
             success: false,
             error: "Error al obtener los comentarios"
